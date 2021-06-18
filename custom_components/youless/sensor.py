@@ -6,7 +6,7 @@
                    - Current tick count, since the Youless meter started running (in kWh)
                 This version (2.0.2) is a fork to support the older YouLess LS110.
 """
-VERSION = '2.0.5'
+VERSION = '2.1.0'
 
 import json
 import logging
@@ -16,20 +16,24 @@ from urllib.request import urlopen
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+
+from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.const import CONF_MONITORED_VARIABLES
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import Entity, generate_entity_id
+from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util import Throttle
 
 DOMAIN = 'youless'
 CONF_HOST = "host"
+CONF_NAME = 'name'
 CONF_MONITORED_VARIABLES = "monitored_variables"
 
-SENSOR_PREFIX = 'youless_'
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_HOST): cv.string,
+		vol.Required(CONF_NAME): cv.string,
         vol.Optional(CONF_MONITORED_VARIABLES, default=['pwr', 'cnt']): vol.All(
             cv.ensure_list, vol.Length(min=1), [vol.In(['pwr', 'cnt'])])
     })
@@ -45,11 +49,12 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     host = config.get(CONF_HOST)
     sensors = config.get(CONF_MONITORED_VARIABLES)
     data_bridge = YoulessDataBridge(host)
+    name_prefix = config.get(CONF_NAME)
 
     devices = []
     for sensor in sensors:
         sensor_config = SENSOR_TYPES[sensor]
-        devices.append(YoulessSensor(data_bridge, sensor_config[0], sensor, sensor_config[1], sensor_config[2], sensor_config[3]))
+        devices.append(YoulessSensor(hass, data_bridge, name_prefix, sensor_config[0], sensor, sensor_config[1], sensor_config[2], sensor_config[3]))
 
     add_devices(devices)
 
@@ -71,14 +76,14 @@ class YoulessDataBridge(object):
 
 class YoulessSensor(Entity):
 
-    def __init__(self, data_bridge, name, prpt, sensor_id, uom, icon):
+    def __init__(self, hass: HomeAssistantType, data_bridge, name_prefix, name, prpt, sensor_id, uom, icon):
         self._state = None
         self._name = name
         self._property = prpt
         self._icon = icon
         self._uom = uom
         self._data_bridge = data_bridge
-        self.entity_id = 'sensor.' + SENSOR_PREFIX + sensor_id
+        self.entity_id = generate_entity_id(ENTITY_ID_FORMAT, name_prefix + '_' + sensor_id, hass=hass)
         self._raw = None
 
     @property
