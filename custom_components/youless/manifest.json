@@ -5,5 +5,5 @@
   "dependencies": [],
   "codeowners": ["@rkoebrugge","@reharmsen","@pdwonline","@jongsoftdev"],
   "requirements": [],
-  "version": "1.3.7"
+  "version": "2.1.0"
 }
